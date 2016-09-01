@@ -115,8 +115,6 @@ void setup() {
 
 // continuously reads packets, looking for RX16 or RX64
 void loop() {
-//  delay(STARTUP_DELAY); // Is it needed?
-
   // Trigger networking at first time.
 //  if (justStart){
 //    xbee.send(tx);
@@ -124,7 +122,7 @@ void loop() {
 //  }
 
     /*-------------------------------------------------*/
-    /*-------------------- Button --------------------*/
+    /*-------------------- Button ---------------------*/
     /*-------------------------------------------------*/
     
     if (!digitalRead(but) && !butPressed){
