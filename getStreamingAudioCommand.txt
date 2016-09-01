@@ -1,0 +1,1 @@
+curl http://stream.resonance.fm:8000/resonance-extra | lame --mp3input --decode --resample 44.1 - test.mp3 > /dev/null
