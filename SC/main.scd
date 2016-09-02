@@ -1,304 +1,294 @@
-~masterEQ = ChannelEQ.new(2, s, 0, 0);
+//Test
+n = NetAddr("localhost", 57120);
+n.sendMsg("/rssi", 33);
+n.sendMsg("/rssi", 43);
+n.sendMsg("/rssi", 56);
+n.sendMsg("/rssi", 62);
+n.sendMsg("/rssi", 76);
+
+n.sendMsg("/but", 0);
 
 
+
+/*------------------------------------------------*/
+/*--------------------- Preset ---------------------*/
+/*------------------------------------------------*/
 (
-
-~masterEQ.gui.onSelect('normal');
-
-~pd_addr = NetAddr("127.0.0.1", 9000);
-
-SynthDef(\mixer, {
-    | out = 0, gate = 1, amp = 0.8, pan = 0,
-    amp1 = 1, amp2 = 1, amp3 = 1, amp4 = 1, amp5 = 1,
-    pan1 = 0, pan2 = 0, pan3 = 0, pan4 = 0, pan5 = 0 |
-
-	var sig1, sig2, sig3, sig4, sig5, sumSig, compSig;
-    sig1 = Pan2.ar(In.ar(100, 2), pan1, amp1);
-    sig2 = Pan2.ar(In.ar(102, 2), pan2, amp2);
-    sig3 = Pan2.ar(In.ar(104, 2), pan3, amp3);
-    sig4 = Pan2.ar(In.ar(106, 2), pan4, amp4);
-    sig5 = Pan2.ar(In.ar(108, 2), pan5, amp5);
-
-    sumSig = Mix.ar([sig1, sig2, sig3, sig4, sig5]);
-    compSig = Compander.ar(
-        in: sumSig,
-        thresh: 0.5,
-        slopeBelow: 1,
-        slopeAbove: 1,
-        clampTime: 0.01,
-        relaxTime: 0.1
-    );
-    Out.ar(out, Pan2.ar(compSig, pan, amp));
-}).add;
-
-
-
-SynthDef(\tak, {| out = 100, freq = 300, modfreq = 5, amp = 0.6, amp2 = 0.9, filfreq = 3200, rq = 0.1, gate = 1,
-	atTime = 0.1, susTime = 2.0, relTime = 0.1, pan = 0 |
-
-	var sig, env, sig2, del, mod, lowcut_sig;
-	mod = LFSaw.kr(1/10, add: 1);
-	sig = LFCub.ar(freq, mod);
-	sig2 = Impulse.ar(0, mul: amp2);
-	sig = BPF.ar((sig+sig2), filfreq, rq, sig*0.3);
-	sig = DelayN.ar(sig, 0.4, 0.1, add: sig*0.3);
-	lowcut_sig = HPF.ar(sig, 100);
-	env = EnvGen.kr(Env.linen(atTime, susTime, relTime), gate, doneAction: 2);
-	// Out.ar(0, Pan2.ar((sig) * env, pan, amp));
-	Out.ar(100, Pan2.ar((lowcut_sig) * env, pan, amp));
-}).add;
-
-
-SynthDef(\a, {| dt = 0.5, if = 3, mf = 10, out = 0, freq = 300, modfreq = 5, amp = 0.6, amp2 = 0.9, filfreq = 3200, rq = 0.1, gate = 1,
-	atTime = 0.1, susTime = 2.0, relTime = 0.1, pan = 0 |
-
-	var sig, env, sig2, del, mod, lowcut_sig;
-    mod = LFSaw.kr(mf).range(0, 1);
-	sig = LFCub.ar(freq,  mod);
-    sig2 = Impulse.ar(if, mul: amp2);
-    sig = BPF.ar((sig + sig2), filfreq, rq, sig*0.3);
-    // sig = BPF.ar((sig + sig2), filfreq, rq);
-    sig = DelayN.ar(sig, 0.6, dt, add: sig*0.3);
-    // sig = DelayN.ar(sig, 0.6, dt);
-	lowcut_sig = HPF.ar(sig, 100);
-    // env = EnvGen.kr(Env.linen(atTime, susTime, relTime), gate, doneAction: 2);
-	// Out.ar(0, Pan2.ar((sig) * env, pan, amp));
-	Out.ar(out, Pan2.ar(lowcut_sig, pan, amp));
-
-}).add;
-
-SynthDef(\b, {arg amp = 1.0;
-    var sig;
-    sig = LFPulse.ar(200)*0.2;
-
-    Out.ar(0, Pan2.ar(sig, 0, amp));
-}).add;
-
-SynthDef(\c, {arg amp = 1.0;
-    var sig;
-    sig = BrownNoise.ar(0.5);
-
-    Out.ar(0, Pan2.ar(sig, 0, amp));
-}).add;
-
-SynthDef(\d, {arg amp = 1.0;
-    var sig;
-    sig = SinOsc.ar(LFNoise0.kr(7).range(600,300))*0.3;
-
-    Out.ar(0, Pan2.ar(sig, 0, amp));
-}).add;
-
-SynthDef(\e, {arg amp = 1.0;
-    var sig;
-    sig = WhiteNoise.ar(1)*0.2;
-
-    Out.ar(0, Pan2.ar(sig, 0, amp));
-}).add;
-
-
+thisProcess.interpreter.executeFile("/Users/giy/Desktop/border_music/SC/recAndPlay.scd");
+thisProcess.interpreter.executeFile("/Users/giy/Desktop/border_music/SC/buffer_read.scd");
+thisProcess.interpreter.executeFile("/Users/giy/Desktop/border_music/SC/synths.scd");
 )
 
 
-//Test
-n = NetAddr("localhost", 57120);
-n.sendMsg("/rssi", 38);
-n.sendMsg("/but", 0);
-~buf_a.plot;
-~buf_a.free;
-
-~buf_a.path
-~buf_a.bufnum
-Buffer
-
-
-//Main Loop
+/*------------------------------------------------*/
+/*------------------- Main Loop -------------------*/
+/*------------------------------------------------*/
 (
 var timeMul = 1, ampMul = 100, bpm = 40, onebeat,
-msgGot, freqVal, recordLen = 8,
-setFreq = nil, recAndPlay = nil,
-synthNodes, mode = 0;
+msgGot, freqVal,
+setFreq = nil, recAndPlay = nil, runNodeOnly = nil, postRange = nil, modeInc = nil,
+synthNode, v_synthNodes, songNodes,
+playIdx = 0, playHanIdx = 0,
+mode = 0, fadeOutTime = 10, range;
+
+
+// Set range MAX / min
+range = IdentityDictionary(know: false);
+range = (\A : [30, 40], \B : [40, 50], \C : [50, 60], \D : [60, 70], \E : [70, 100]);
 
 
 onebeat = 60/bpm;
 
+// mode 0 : ambient freq set
 freqVal = Array.with(0.33, 0.38, 0.42, 0.48, 0.51, 0.58, 0.61);
 
 msgGot = Array.newClear(10);
 10.do{| i | msgGot[i] = false};
 
-synthNodes = Array.newClear(5);
+v_synthNodes = Array.newClear(5);
+songNodes = Array.newClear(5);
 
 //-- FUNCTION --
 setFreq = {|arg_freq|
-
-~p1.stream = Pbind(
-    \instrument, \tak,
-    \dur, onebeat*timeMul,
-    \freq, #[180, 240, 300]*arg_freq,
-	\atTime, 0.6,
-	\susTime, onebeat*timeMul,
-    \relTime, 0.3,
-	\amp, ampMul
-).asStream;
-
+    ~p1.stream = Pbind(
+        \instrument, \tak,
+        \dur, onebeat*timeMul,
+        \freq, #[180, 240, 300]*arg_freq,
+        \atTime, 0.6,
+        \susTime, onebeat*timeMul,
+        \relTime, 0.1,
+        \amp, ampMul
+    ).asStream;
 };
 
-recAndPlay = {|arg_bufnum|
+recAndPlay = {|arg_bufnum, arg_bus|
     fork {
-        Synth(\rec, [\bufnum, arg_bufnum, \over, 1, \prev, 0]);
-        (recordLen*2).wait; //record twice
+        if (mode == 5, {
+            Synth.before(~mixer, \rec, [\inbus, arg_bus, \bufnum, arg_bufnum, \over, 0.7, \prev, 0.5]);
+        },{
+            Synth.before(~mixer, \rec, [\inbus, arg_bus, \bufnum, arg_bufnum, \over, 1, \prev, 0]);
+        });
+
+        ~recBufLen.wait; //first record loop done. second record loop start.
+        Synth(\ting, [\freq, 1000, \amp, 1.0]);
+
+        ~recBufLen.wait; //second record loop done - record finished.
+        Synth(\ting, [\freq, 600, \amp, 1.0]);
+
         ("Record: " + arg_bufnum + " done.").postln;
 
-
+        // Before mode end. (prepare next mode)
         if (mode == 0, {~p1.stop;});
+        if (mode == 1, { 5.do{| i | v_synthNodes[i].free;} });
+        if (mode == 2, { 5.do{| i | songNodes[i].free;}; synthNode.run(true); });
 
+        // Play recoreded buffer except mode is 5
+        if (mode != 5, { Synth(\play, [\out, arg_bus, \bufnum, arg_bufnum]); });
 
-        mode = mode + 1;
-        Synth(\play, [\bufnum, arg_bufnum]);
-
+        if (mode < 7, { mode = mode + 1; });
     }
 };
 
+runNodeOnly = {|nodeName, idx|
+    5.do{| i | nodeName[i].run(false);};
+    nodeName[idx].run(true);
+};
+
+postRange = {|r_sym|
+    (range[r_sym][0] + "~" + range[r_sym][1]).postln;
+};
+
+modeInc = {
+    mode = mode + 1;
+};
 
 
-//-- NODE WATCHER --
-// ~grp = Group.new(s);
-// NodeWatcher.register(~grp);
+//-- MIXER --
+~mixer = Synth(\mixer, [\out, 0, \amp, 0.6,
+    \amp1, 1, \amp2, 0.1, \amp3, 0.15, \amp4, 0.44, \amp5, 0.4, \amp6, 0.4,
+    \pan1, 0, \pan2, -0.2, \pan3, 0.2, \pan4, 0, \pan5, 0, \pan6, 0,
+    \ths , 0.5, \slB, 1, \slA, 1, \clpTime, 0.01, \relTime, 0.1
+]);
 
-~mixer = Synth(\mixer, [\out, 0, \amp, 0.6], addAction: 'addToTail');
 
+//-- SYNTH NODES --
+//mode == 0 : ambient
+//mode == 1 : voices
+v_synthNodes[0] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 102, \loop, 1, \bufnum, ~voice[0]]);
+v_synthNodes[1] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 102, \loop, 1, \bufnum, ~voice[1]]);
+v_synthNodes[2] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 102, \loop, 1, \bufnum, ~voice[2]]);
+v_synthNodes[3] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 102, \loop, 1, \bufnum, ~voice[3]]);
+v_synthNodes[4] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 102, \loop, 1, \bufnum, ~voice[4]]);
 
-synthNodes[0] = Synth(\a, [\amp, 0]);
-synthNodes[1] = Synth(\b, [\amp, 0]);
-synthNodes[2] = Synth(\c, [\amp, 0]);
-synthNodes[3] = Synth(\d, [\amp, 0]);
-synthNodes[4] = Synth(\e, [\amp, 0]);
-// synthNodes[1] = {LFPulse.ar(200)*0.2!2}.play;
-// synthNodes[2] = {BrownNoise.ar(0.5)!2}.play;
-// synthNodes[3] = {SinOsc.ar(LFNoise0.kr(7).range(600,300))*0.3!2}.play;
-// synthNodes[4] =  {WhiteNoise.ar(1)*0.2!2}.play;
-// synthNodes[5] = {SinOsc.ar(300)*0.8!2}.play;
-// synthNodes[0] = {SinOsc.ar(300)*0.8!2}.play;
+//mode == 2 : song
+songNodes[0] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 104, \loop, 1, \bufnum, ~v_song_part[0]]);
+songNodes[1] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 104, \loop, 1, \bufnum, ~v_song_part[1]]);
+songNodes[2] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 104, \loop, 1, \bufnum, ~v_song_part[2]]);
+songNodes[3] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 104, \loop, 1, \bufnum, ~v_song_part[3]]);
+songNodes[4] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 104, \loop, 1, \bufnum, ~v_song_part[4]]);
+
+//mode == 3 : beating sound
+synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]);
+
+//mode == 4 : number (out 108)
+//mode == 5 : number_han (out 108)
+//mode == 6 : micin (110)
+
 
 
 //-- OSC --
 ~o1.free;~o2.free;
 ~o2 = OSCFunc({|msg, time, addr, recvPort|
     "Button pressed".postln;
+    ("mode: " + mode).postln;
+    Synth(\ting, [\freq, 800, \amp, 1.0]);
 
     switch (mode,
-        0, {recAndPlay.value(~buf_a)},
-        1, {recAndPlay.value(~buf_b)},
-        2, {recAndPlay.value(~buf_c)},
-        3, {recAndPlay.value(~buf_d)},
-        4, {recAndPlay.value(~buf_e)}
+        0, {recAndPlay.value(~recbuf_a, 100)},
+        1, {recAndPlay.value(~recbuf_b, 102)},
+        2, {recAndPlay.value(~recbuf_c, 104)},
+        // 3, { recAndPlay.value(~recbuf_d, 106) },
+        3, { modeInc.value },
+        4, {recAndPlay.value(~recbuf_e, 108)},
+        5, {recAndPlay.value(~recbuf_e, 108)},
+        6, {~micin = Synth(\micin, [\amp, 0.8]); modeInc.value;},
+        7, {~micin.free;~mixer.release(fadeOutTime) }
     );
-
 }, '/but');
+
 
 ~o1 = OSCFunc({|msg, time, addr, recvPort|
     var getVal = msg[1].asInteger;
     // getVal.postln;
     // msg.postln;
 
-    if ((30 <= getVal) && (getVal < 40) && (msgGot[0] == false), {
-        "30 ~ 40".postln;
+    /*----------------------------  range A  ----------------------------*/
+    if ((range[\A][0] <= getVal) && (getVal < range[\A][1]) && (msgGot[0] == false), {
+        postRange.value(\A);
         getVal.postln;
+
         10.do{| i | msgGot[i] = false; };
         msgGot[0] = true;
 
+        switch (mode,
+            0, { setFreq.value(freqVal[0]) },
+            1, { runNodeOnly.value(v_synthNodes, 0) },
+            2, { runNodeOnly.value(songNodes, 0) },
+            4, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
+            5, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
+        );
 
-        setFreq.value(freqVal[0]);
-        ~pd_addr.sendMsg("/rssi", 3);
+        if (mode >= 3, { synthNode.set(\freq, #[180, 240, 300]*(1 + (getVal/100)), \if, 3) });
 
 
-        //Test
-        // 5.do{| i | synthNodes[i].set(\amp, 0)};
-        // synthNodes[0].set(\amp, 1);
-
-
-
+        // ~pd_addr.sendMsg("/rssi", 3);
         });
 
-    if ((40 <= getVal) && (getVal < 50) && (msgGot[1] == false), {
-        "40 ~ 50".postln;
+
+    /*---------------------------- range B ----------------------------*/
+    if ((range[\B][0] <= getVal) && (getVal < range[\B][1]) && (msgGot[1] == false), {
+        postRange.value(\B);
         getVal.postln;
+
         10.do{| i | msgGot[i] = false; };
         msgGot[1] = true;
 
-        setFreq.value(freqVal[1]);
-        ~pd_addr.sendMsg("/rssi", 4);
+        switch (mode,
+            0, { setFreq.value(freqVal[1]) },
+            1, { runNodeOnly.value(v_synthNodes, 1) },
+            2, { runNodeOnly.value(songNodes, 1) },
+            4, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
+            5, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
+        );
 
-        // 5.do{| i | synthNodes[i].set(\amp, 0)};
-        // synthNodes[1].set(\amp, 1);
-
-
-
+        if (mode >= 3, { synthNode.set(\freq, #[180, 240, 300]*(1 + (getVal/100)), \if, 4.0) });
+        // ~pd_addr.sendMsg("/rssi", 4);
         });
 
-    if ((50 <= getVal) && (getVal < 60) && (msgGot[2] == false), {
-        "50 ~ 60".postln;
+
+
+
+    /*----------------------------  range C ----------------------------*/
+    if ((range[\C][0] <= getVal) && (getVal < range[\C][1]) && (msgGot[2] == false), {
+        postRange.value(\C);
         getVal.postln;
+
         10.do{| i | msgGot[i] = false; };
         msgGot[2] = true;
 
-        setFreq.value(freqVal[2]);
-        ~pd_addr.sendMsg("/rssi", 5);
+        switch (mode,
+            0, { setFreq.value(freqVal[2]) },
+            1, { runNodeOnly.value(v_synthNodes, 2) },
+            2, { runNodeOnly.value(songNodes, 2) },
+            4, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
+            5, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
+        );
 
-
-        // 5.do{| i | synthNodes[i].set(\amp, 0)};
-        // synthNodes[2].set(\amp, 1);
-
-
+        if (mode >= 3, { synthNode.set(\freq, #[180, 240, 300]*(1 + (getVal/100)), \if, 4.7) });
+        // ~pd_addr.sendMsg("/rssi", 5);
         });
 
-    if ((60 <= getVal) && (getVal < 70) && (msgGot[3] == false), {
-        "60 ~ 70".postln;
+
+
+
+    /*---------------------------- range D ----------------------------*/
+    if ((range[\D][0] <= getVal) && (getVal < range[\D][1]) && (msgGot[3] == false), {
+        postRange.value(\D);
         getVal.postln;
+
         10.do{| i | msgGot[i] = false; };
         msgGot[3] = true;
 
+        switch (mode,
+            0, { setFreq.value(freqVal[3]) },
+            1, { runNodeOnly.value(v_synthNodes, 3) },
+            2, { runNodeOnly.value(songNodes, 3) },
+            4, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
+            5, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
+        );
 
-        setFreq.value(freqVal[3]);
-        ~pd_addr.sendMsg("/rssi", 6);
-
-
-        // 5.do{| i | synthNodes[i].set(\amp, 0)};
-        // synthNodes[3].set(\amp, 1);
-
-
+        if (mode >= 3, { synthNode.set(\freq, #[180, 240, 300]*(1 + (getVal/100)), \if, 5.5) });
+        // ~pd_addr.sendMsg("/rssi", 6);
         });
 
-    if ((70 <= getVal) && (getVal < 90) && (msgGot[4] == false), {
-        "70 ~ 90".postln;
+
+
+    /*---------------------------- range E ----------------------------*/
+    if ((range[\E][0] <= getVal) && (getVal < range[\E][1]) && (msgGot[4] == false), {
+        postRange.value(\E);
         getVal.postln;
+
         10.do{| i | msgGot[i] = false; };
         msgGot[4] = true;
 
+        switch (mode,
+            0, { setFreq.value(freqVal[4]) },
+            1, { runNodeOnly.value(v_synthNodes, 4) },
+            2, { runNodeOnly.value(songNodes, 4) },
+            4, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
+            5, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
+        );
 
-        setFreq.value(freqVal[4]);
-        ~pd_addr.sendMsg("/rssi", 7);
-
-        // 5.do{| i | synthNodes[i].set(\amp, 0)};
-        // synthNodes[4].set(\amp, 1);
-
-
+        if (mode >= 3, { synthNode.set(\freq, #[180, 240, 300]*(1 + (getVal/100)), \if, 4.4) });
+        // ~pd_addr.sendMsg("/rssi", 7);
         });
 
 }, '/rssi');
 
 
 
-// -- SOUND --
-~p1 = Pbind(
-    \instrument, \tak,
-    \dur, onebeat*timeMul,
-    \freq, #[180, 240, 300]*0.315,
-	\atTime, 0.6,
-	\susTime, onebeat*timeMul,
-    \relTime, 0.3,
-	\amp, ampMul
-).play;
+// -- mode 1 ambient sound Pattern --
+if (mode == 0, {
+    ~p1 = Pbind(
+        \instrument, \tak,
+        \dur, onebeat*timeMul,
+        \freq, #[180, 240, 300]*0.315,
+        \atTime, 0.6,
+        \susTime, onebeat*timeMul,
+        \relTime, 0.1,
+        \amp, ampMul
+    ).play;
+});
 
 
 /*
