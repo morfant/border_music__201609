@@ -18,6 +18,8 @@
 };
 
 ~v_song = Buffer.read((s, "/Users/giy/Desktop/border_music/voice/song.wav");
+~v_laughing = Buffer.read(s, "/Users/giy/Desktop/border_music/voice/laughing.wav");
+
 )
 
 (//Write as mono file
@@ -51,4 +53,10 @@
     d.write("/Users/giy/Desktop/border_music/voice/song_mono.wav", "wav", "int16");
     });
 
+
+~v_laughing.loadToFloatArray(action: { arg array;
+        a = array;
+        d = Buffer.loadCollection(s, a.unlace(2).sum*0.5);
+    d.write("/Users/giy/Desktop/border_music/voice/laugh_mono.wav", "wav", "int16");
+    });
 )

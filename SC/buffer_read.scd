@@ -1,7 +1,8 @@
 //Buffer read
 
 (
-~v_song.free;
+~v_song.free;~v_laughing.free;
+~v_laughing = Buffer.read(s, "/Users/giy/Desktop/border_music/voice/laugh_mono.wav");
 
 ~voice = Array.newClear(5);
 5.do{| i |

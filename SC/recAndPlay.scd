@@ -28,3 +28,16 @@ SynthDef(\play,
 }).add;
 
 )
+
+
+/*
+
+~recbuf_a.play;
+~recbuf_b.play;
+~recbuf_c.play;
+
+*/
+
+
+
+

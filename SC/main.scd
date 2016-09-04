@@ -5,8 +5,11 @@ n.sendMsg("/rssi", 43);
 n.sendMsg("/rssi", 56);
 n.sendMsg("/rssi", 62);
 n.sendMsg("/rssi", 76);
+n.sendMsg("/rssi", 30 + 50.rand);
 
 n.sendMsg("/but", 0);
+
+
 
 
 
@@ -25,26 +28,29 @@ thisProcess.interpreter.executeFile("/Users/giy/Desktop/border_music/SC/synths.s
 /*------------------------------------------------*/
 (
 var timeMul = 1, ampMul = 100, bpm = 40, onebeat,
-msgGot, freqVal,
+msgGot, freqVal, rangeIdx,
 setFreq = nil, recAndPlay = nil, runNodeOnly = nil, postRange = nil, modeInc = nil,
-synthNode, v_synthNodes, songNodes,
+laughSoundNodes, synthNode, v_synthNodes, songNodes,
 playIdx = 0, playHanIdx = 0,
-mode = 0, fadeOutTime = 10, range;
+mode = -2, fadeOutTime = 16, range;
 
 
 // Set range MAX / min
 range = IdentityDictionary(know: false);
 range = (\A : [30, 40], \B : [40, 50], \C : [50, 60], \D : [60, 70], \E : [70, 100]);
 
+rangeIdx = IdentityDictionary(know: false);
+rangeIdx = (\A :0, \B : 1, \C : 2, \D : 3, \E : 4);
 
 onebeat = 60/bpm;
 
 // mode 0 : ambient freq set
-freqVal = Array.with(0.33, 0.38, 0.42, 0.48, 0.51, 0.58, 0.61);
+freqVal = Array.with(0.315, 0.38, 0.42, 0.48, 0.51, 0.58, 0.61);
 
 msgGot = Array.newClear(10);
 10.do{| i | msgGot[i] = false};
 
+laughSoundNodes = Array.newClear(5);
 v_synthNodes = Array.newClear(5);
 songNodes = Array.newClear(5);
 
@@ -64,9 +70,9 @@ setFreq = {|arg_freq|
 recAndPlay = {|arg_bufnum, arg_bus|
     fork {
         if (mode == 5, {
-            Synth.before(~mixer, \rec, [\inbus, arg_bus, \bufnum, arg_bufnum, \over, 0.7, \prev, 0.5]);
+            Synth.before(~micInEQ.synth, \rec, [\inbus, arg_bus, \bufnum, arg_bufnum, \over, 0.7, \prev, 0.5]);
         },{
-            Synth.before(~mixer, \rec, [\inbus, arg_bus, \bufnum, arg_bufnum, \over, 1, \prev, 0]);
+            Synth.before(~micInEQ.synth, \rec, [\inbus, arg_bus, \bufnum, arg_bufnum, \over, 1, \prev, 0]);
         });
 
         ~recBufLen.wait; //first record loop done. second record loop start.
@@ -104,35 +110,53 @@ modeInc = {
 
 
 //-- MIXER --
-~mixer = Synth(\mixer, [\out, 0, \amp, 0.6,
-    \amp1, 1, \amp2, 0.1, \amp3, 0.15, \amp4, 0.44, \amp5, 0.4, \amp6, 0.4,
-    \pan1, 0, \pan2, -0.2, \pan3, 0.2, \pan4, 0, \pan5, 0, \pan6, 0,
+~mixer = Synth.before(~masterEQ.synth, \mixer, [\out, 0, \amp, 0.6,
+    \amp0, 0.7, \amp1, 1, \amp2, 0.1, \amp3, 0.15, \amp4, 0.44, \amp5, 0.4, \amp6, 1.0,
+    \pan0, 0, \pan1, 0, \pan2, -0.2, \pan3, 0.2, \pan4, 0, \pan5, 0, \pan6, 0,
     \ths , 0.5, \slB, 1, \slA, 1, \clpTime, 0.01, \relTime, 0.1
 ]);
 
 
 //-- SYNTH NODES --
-//mode == 0 : ambient
-//mode == 1 : voices
-v_synthNodes[0] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 102, \loop, 1, \bufnum, ~voice[0]]);
-v_synthNodes[1] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 102, \loop, 1, \bufnum, ~voice[1]]);
-v_synthNodes[2] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 102, \loop, 1, \bufnum, ~voice[2]]);
-v_synthNodes[3] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 102, \loop, 1, \bufnum, ~voice[3]]);
-v_synthNodes[4] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 102, \loop, 1, \bufnum, ~voice[4]]);
+//mode == -1 : laugh (no EQ: out 98 -> mixer -> 0)
+laughSoundNodes[0] = Synth.newPaused(\bufRead, [\pan, -0.8, \out, 98, \amp, 0.2, \loop, 1, \bufnum, ~v_laughing]);
+laughSoundNodes[1] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 98, \amp, 0.4, \loop, 1, \bufnum, ~v_laughing]);
+laughSoundNodes[2] = Synth.newPaused(\bufRead, [\pan, 0.6, \out, 98, \amp, 0.6, \loop, 1, \bufnum, ~v_laughing]);
+laughSoundNodes[3] = Synth.newPaused(\bufRead, [\pan, 1, \out, 98, \amp, 1, \loop, 1, \bufnum, ~v_laughing]);
+laughSoundNodes[4] = Synth.newPaused(\bufRead, [\pan, 0.2, \out, 98, \amp, 0.8, \loop, 1, \bufnum, ~v_laughing]);
 
-//mode == 2 : song
-songNodes[0] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 104, \loop, 1, \bufnum, ~v_song_part[0]]);
-songNodes[1] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 104, \loop, 1, \bufnum, ~v_song_part[1]]);
-songNodes[2] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 104, \loop, 1, \bufnum, ~v_song_part[2]]);
-songNodes[3] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 104, \loop, 1, \bufnum, ~v_song_part[3]]);
-songNodes[4] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 104, \loop, 1, \bufnum, ~v_song_part[4]]);
+//mode == 0 : ambient (no EQ: out 100 -> mixer -> 0)
+~p1 = Pbind(
+    \instrument, \tak,
+    \dur, onebeat*timeMul,
+    \freq, #[180, 240, 300]*0.315,
+    \atTime, 0.6,
+    \susTime, onebeat*timeMul,
+    \relTime, 0.1,
+    \amp, ampMul
+).play;
+~p1.stop;
+
+//mode == 1 : voices (out 52 -> EQ -> 102 -> mixer -> 0)
+v_synthNodes[0] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 52, \loop, 1, \bufnum, ~voice[0]]);
+v_synthNodes[1] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 52, \loop, 1, \bufnum, ~voice[1]]);
+v_synthNodes[2] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 52, \loop, 1, \bufnum, ~voice[2]]);
+v_synthNodes[3] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 52, \loop, 1, \bufnum, ~voice[3]]);
+v_synthNodes[4] = Synth.newPaused(\bufRead, [\pan, -0.3, \out, 52, \loop, 1, \bufnum, ~voice[4]]);
+
+//mode == 2 : song (out 54 -> EQ -> 104 -> mixer -> 0)
+songNodes[0] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 54, \loop, 1, \bufnum, ~v_song_part[0]]);
+songNodes[1] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 54, \loop, 1, \bufnum, ~v_song_part[1]]);
+songNodes[2] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 54, \loop, 1, \bufnum, ~v_song_part[2]]);
+songNodes[3] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 54, \loop, 1, \bufnum, ~v_song_part[3]]);
+songNodes[4] = Synth.newPaused(\bufRead, [\pan, 0.4, \out, 54, \loop, 1, \bufnum, ~v_song_part[4]]);
 
 //mode == 3 : beating sound
 synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]);
 
-//mode == 4 : number (out 108)
-//mode == 5 : number_han (out 108)
-//mode == 6 : micin (110)
+//mode == 4 : number (out 58 -> EQ -> 108 -> mixer -> 0)
+//mode == 5 : number_han (out 58 -> EQ -> 108 -> mixer -> 0)
+//mode == 6 : micin (out 60 -> EQ -> 110 -> mixer -> 0)
 
 
 
@@ -144,14 +168,15 @@ synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]
     Synth(\ting, [\freq, 800, \amp, 1.0]);
 
     switch (mode,
+        -2, { modeInc.value; },
+        -1, { 5.do{| i | laughSoundNodes[i].free}; ~p1.play; modeInc.value},
         0, {recAndPlay.value(~recbuf_a, 100)},
-        1, {recAndPlay.value(~recbuf_b, 102)},
-        2, {recAndPlay.value(~recbuf_c, 104)},
-        // 3, { recAndPlay.value(~recbuf_d, 106) },
+        1, {recAndPlay.value(~recbuf_b, 52)},
+        2, {recAndPlay.value(~recbuf_c, 54)},
         3, { modeInc.value },
-        4, {recAndPlay.value(~recbuf_e, 108)},
-        5, {recAndPlay.value(~recbuf_e, 108)},
-        6, {~micin = Synth(\micin, [\amp, 0.8]); modeInc.value;},
+        4, {recAndPlay.value(~recbuf_e, 58)},
+        5, {recAndPlay.value(~recbuf_e, 58)},
+        6, {~micin = Synth(\micin, [\out, 60, \amp, 0.8]); modeInc.value;},
         7, {~micin.free;~mixer.release(fadeOutTime) }
     );
 }, '/but');
@@ -171,16 +196,15 @@ synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]
         msgGot[0] = true;
 
         switch (mode,
+            -1, { runNodeOnly.value(laughSoundNodes, 0) },
             0, { setFreq.value(freqVal[0]) },
             1, { runNodeOnly.value(v_synthNodes, 0) },
             2, { runNodeOnly.value(songNodes, 0) },
-            4, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
-            5, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
+            4, { Synth(\bufReadEnv, [\out, 58, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
+            5, { Synth(\bufReadEnv, [\out, 58, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
         );
 
         if (mode >= 3, { synthNode.set(\freq, #[180, 240, 300]*(1 + (getVal/100)), \if, 3) });
-
-
         // ~pd_addr.sendMsg("/rssi", 3);
         });
 
@@ -194,11 +218,12 @@ synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]
         msgGot[1] = true;
 
         switch (mode,
+            -1, { runNodeOnly.value(laughSoundNodes, 1) },
             0, { setFreq.value(freqVal[1]) },
             1, { runNodeOnly.value(v_synthNodes, 1) },
             2, { runNodeOnly.value(songNodes, 1) },
-            4, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
-            5, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
+            4, { Synth(\bufReadEnv, [\out, 58, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
+            5, { Synth(\bufReadEnv, [\out, 58, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
         );
 
         if (mode >= 3, { synthNode.set(\freq, #[180, 240, 300]*(1 + (getVal/100)), \if, 4.0) });
@@ -217,11 +242,12 @@ synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]
         msgGot[2] = true;
 
         switch (mode,
+            -1, { runNodeOnly.value(laughSoundNodes, 2) },
             0, { setFreq.value(freqVal[2]) },
             1, { runNodeOnly.value(v_synthNodes, 2) },
             2, { runNodeOnly.value(songNodes, 2) },
-            4, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
-            5, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
+            4, { Synth(\bufReadEnv, [\out, 58, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
+            5, { Synth(\bufReadEnv, [\out, 58, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
         );
 
         if (mode >= 3, { synthNode.set(\freq, #[180, 240, 300]*(1 + (getVal/100)), \if, 4.7) });
@@ -240,11 +266,12 @@ synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]
         msgGot[3] = true;
 
         switch (mode,
+            -1, { runNodeOnly.value(laughSoundNodes, 3) },
             0, { setFreq.value(freqVal[3]) },
             1, { runNodeOnly.value(v_synthNodes, 3) },
             2, { runNodeOnly.value(songNodes, 3) },
-            4, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
-            5, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
+            4, { Synth(\bufReadEnv, [\out, 58, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
+            5, { Synth(\bufReadEnv, [\out, 58, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
         );
 
         if (mode >= 3, { synthNode.set(\freq, #[180, 240, 300]*(1 + (getVal/100)), \if, 5.5) });
@@ -262,11 +289,12 @@ synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]
         msgGot[4] = true;
 
         switch (mode,
+            -1, { runNodeOnly.value(laughSoundNodes, 4) },
             0, { setFreq.value(freqVal[4]) },
             1, { runNodeOnly.value(v_synthNodes, 4) },
             2, { runNodeOnly.value(songNodes, 4) },
-            4, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
-            5, { Synth(\bufReadEnv, [\out, 108, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
+            4, { Synth(\bufReadEnv, [\out, 58, \bufnum, ~number[playIdx]]); playIdx = (playIdx + 1)%11; },
+            5, { Synth(\bufReadEnv, [\out, 58, \bufnum, ~number_han[playHanIdx]]); playHanIdx = (playHanIdx + 1)%11; },
         );
 
         if (mode >= 3, { synthNode.set(\freq, #[180, 240, 300]*(1 + (getVal/100)), \if, 4.4) });
@@ -278,18 +306,19 @@ synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]
 
 
 // -- mode 1 ambient sound Pattern --
-if (mode == 0, {
-    ~p1 = Pbind(
-        \instrument, \tak,
-        \dur, onebeat*timeMul,
-        \freq, #[180, 240, 300]*0.315,
-        \atTime, 0.6,
-        \susTime, onebeat*timeMul,
-        \relTime, 0.1,
-        \amp, ampMul
-    ).play;
-});
-
+// if (mode == 0, {
+//     ~p1 = Pbind(
+//         \instrument, \tak,
+//         \dur, onebeat*timeMul,
+//         \freq, #[180, 240, 300]*0.315,
+//         \atTime, 0.6,
+//         \susTime, onebeat*timeMul,
+//         \relTime, 0.1,
+//         \amp, ampMul
+//     ).play;
+// });
+//
+// ~p1.stop;
 
 /*
 ~p2 = Pbind(
