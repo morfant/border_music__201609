@@ -5,6 +5,7 @@ n.sendMsg("/rssi", 43);
 n.sendMsg("/rssi", 56);
 n.sendMsg("/rssi", 62);
 n.sendMsg("/rssi", 76);
+n.sendMsg("/rssi", 86);
 n.sendMsg("/rssi", 30 + 50.rand);
 
 n.sendMsg("/but", 0);
@@ -37,7 +38,7 @@ mode = -2, fadeOutTime = 16, range;
 
 // Set range MAX / min
 range = IdentityDictionary(know: false);
-range = (\A : [30, 40], \B : [40, 50], \C : [50, 60], \D : [60, 70], \E : [70, 100]);
+range = (\A : [40, 50], \B : [50, 60], \C : [60, 70], \D : [70, 80], \E : [80, 90]);
 
 rangeIdx = IdentityDictionary(know: false);
 rangeIdx = (\A :0, \B : 1, \C : 2, \D : 3, \E : 4);
@@ -70,16 +71,16 @@ setFreq = {|arg_freq|
 recAndPlay = {|arg_bufnum, arg_bus|
     fork {
         if (mode == 5, {
-            Synth.before(~micInEQ.synth, \rec, [\inbus, arg_bus, \bufnum, arg_bufnum, \over, 0.7, \prev, 0.5]);
+            Synth.before(~micInEQ.synth, \rec, [\inbus, arg_bus, \bufnum, arg_bufnum, \over, 0.5, \prev, 0.4]);
         },{
             Synth.before(~micInEQ.synth, \rec, [\inbus, arg_bus, \bufnum, arg_bufnum, \over, 1, \prev, 0]);
         });
 
         ~recBufLen.wait; //first record loop done. second record loop start.
-        Synth(\ting, [\freq, 1000, \amp, 1.0]);
+        Synth(\ting, [\freq, 1000, \amp, 0.5]);
 
         ~recBufLen.wait; //second record loop done - record finished.
-        Synth(\ting, [\freq, 600, \amp, 1.0]);
+        Synth(\ting, [\freq, 600, \amp, 0.6]);
 
         ("Record: " + arg_bufnum + " done.").postln;
 
@@ -110,8 +111,8 @@ modeInc = {
 
 
 //-- MIXER --
-~mixer = Synth.before(~masterEQ.synth, \mixer, [\out, 0, \amp, 0.6,
-    \amp0, 0.7, \amp1, 1, \amp2, 0.1, \amp3, 0.15, \amp4, 0.44, \amp5, 0.4, \amp6, 1.0,
+~mixer = Synth.before(~masterEQ.synth, \mixer, [\out, 0, \amp, 0.6, \pan, -0.3,
+    \amp0, 0.2, \amp1, 0.2, \amp2, 0.1, \amp3, 0.15, \amp4, 0.2, \amp5, 0.3, \amp6, 1.0,
     \pan0, 0, \pan1, 0, \pan2, -0.2, \pan3, 0.2, \pan4, 0, \pan5, 0, \pan6, 0,
     \ths , 0.5, \slB, 1, \slA, 1, \clpTime, 0.01, \relTime, 0.1
 ]);
@@ -165,7 +166,7 @@ synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]
 ~o2 = OSCFunc({|msg, time, addr, recvPort|
     "Button pressed".postln;
     ("mode: " + mode).postln;
-    Synth(\ting, [\freq, 800, \amp, 1.0]);
+    Synth(\ting, [\freq, 800, \amp, 0.4]);
 
     switch (mode,
         -2, { modeInc.value; },
@@ -176,8 +177,9 @@ synthNode = Synth.newPaused(\aha, [\out, 106, \freq, #[180, 240, 300], \amp, 30]
         3, { modeInc.value },
         4, {recAndPlay.value(~recbuf_e, 58)},
         5, {recAndPlay.value(~recbuf_e, 58)},
-        6, {~micin = Synth(\micin, [\out, 60, \amp, 0.8]); modeInc.value;},
-        7, {~micin.free;~mixer.release(fadeOutTime) }
+        // 6, {~micin = Synth(\micin, [\out, 60, \amp, 0.2]); modeInc.value;},
+        6, { modeInc.value;},
+        7, {~mixer.release(fadeOutTime) }
     );
 }, '/but');
 
